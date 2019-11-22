@@ -5,10 +5,10 @@ import (
 )
 
 func TestHomie(t *testing.T) {
-	if h := NewHomie(); h.base != "homie" {
+	if h := NewHomie(); h.RootTopic != "homie" {
 		t.Fail()
 	}
-	if h := NewHomie("alternate"); h.base != "alternate" {
+	if h := NewHomie("alternate"); h.RootTopic != "alternate" {
 		t.Fail()
 	}
 }

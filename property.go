@@ -1,5 +1,11 @@
 package homie
 
+import (
+	"fmt"
+	"github.com/mitchellh/mapstructure"
+	"strings"
+)
+
 type DataType string
 
 const (
@@ -13,13 +19,13 @@ const (
 
 type Property struct {
 	ID       string
-	Name     string
-	DataType DataType
+	Name     string   `mapstructure:"$name"`
+	DataType DataType `mapstructure:"$datatype"`
 	Value    string
-	Format   string
-	Unit     string
-	Retained bool
-	Settable bool
+	Format   string `mapstructure:"$format"`
+	Unit     string `mapstructure:"$unit"`
+	Retained bool   `mapstructure:"$retained"`
+	Settable bool   `mapstructure:"$settable"`
 }
 
 func NewProperty(id string) *Property {
@@ -30,8 +36,12 @@ func NewProperty(id string) *Property {
 	}
 }
 
+func (p *Property) Topic(base string) string {
+	return base + "/" + p.ID
+}
+
 func (p *Property) Publish(pub Publisher, base string) {
-	topic := base + "/" + p.ID
+	topic := p.Topic(base)
 
 	// required attributes
 	pub(topic+"/$name", true, p.Name)
@@ -58,3 +68,17 @@ func (p *Property) Publish(pub Publisher, base string) {
 // 	topic := base + "/" + p.Name
 // 	pub(topic, p.Retained, p.Value)
 // }
+
+func (p *Property) Unmarshal(subscribe Subscriber, base string) {
+	prefix := p.Topic(base) + "/"
+
+	subscribe(prefix+"+", func(topic string, retained bool, message string) {
+		topic = strings.TrimPrefix(topic, prefix)
+		fmt.Printf("prop: %s %v (%v)\n", topic, message, retained)
+
+		// use mapstructure instead of decoding by property
+		mapstructure.WeakDecode(map[string]string{
+			topic: message,
+		}, p)
+	})
+}

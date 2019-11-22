@@ -7,9 +7,12 @@ import (
 
 func TestDevice(t *testing.T) {
 	if d := NewDevice("id"); d.ID != "id" || d.Name != "id" ||
-		d.State != StateInit || d.Version != Version {
+		d.State != StateInit || d.Version != Version || d.Implementation != "" {
 		t.Fail()
 	}
+	// if d := NewDevice("id", "alternate"); d.RootTopic != "alternate" {
+	// 	t.Fail()
+	// }
 }
 func TestDeviceAdd(t *testing.T) {
 	d := NewDevice("id")
@@ -22,24 +25,30 @@ func TestDeviceAdd(t *testing.T) {
 	if err := d.Add(n); err == nil {
 		t.Fail()
 	}
+
+	if n, err := d.NewNode("node2"); err != nil || d.Nodes["node2"] != n {
+		t.Fail()
+	}
 }
 
 func TestDevicePublish(t *testing.T) {
 	d := NewDevice("id")
 	d.Name = "name"
+	d.Implementation = "impl"
 	d.State = StateReady
 	d.Extensions = append(d.Extensions, "foo", "bar")
-	d.Add(NewNode("n1"))
-	d.Add(NewNode("n2"))
+	d.NewNode("n1")
+	d.NewNode("n2")
 
 	exp := []struct {
 		t, m string
 		r    bool
 	}{
+		{">/id/$homie", Version, true},
 		{">/id/$name", "name", true},
-		{">/id/$version", Version, true},
 		{">/id/$state", string(StateReady), true},
 		{">/id/$extensions", "foo,bar", true},
+		{">/id/$implementation", "impl", true},
 		{">/id/$nodes", "n1,n2", true},
 	}
 

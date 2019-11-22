@@ -21,6 +21,10 @@ func TestNodeAdd(t *testing.T) {
 	if err := n.Add(p); err == nil {
 		t.Fail()
 	}
+
+	if p, err := n.NewProperty("prop2"); err != nil || n.Properties["prop2"] != p {
+		t.Fail()
+	}
 }
 
 func TestNodePublish(t *testing.T) {
