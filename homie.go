@@ -6,8 +6,8 @@ import (
 )
 
 type Homie struct {
-	RootTopic string
-	Devices   map[string]*Device
+	RootTopic string             `mapstructure:"_roottopic"`
+	Devices   map[string]*Device `mapstructure:"_devices"`
 }
 
 type Publisher func(topic string, retained bool, message string)
@@ -16,28 +16,24 @@ type Callback func(topic string, retained bool, message string)
 
 const DefaultRootTopic = "homie"
 
-func NewHomie(rootTopic ...string) *Homie {
-	topic := DefaultRootTopic
-	if len(rootTopic) == 1 {
-		topic = rootTopic[0]
-	}
+func NewHomie() *Homie {
 	return &Homie{
-		RootTopic: topic,
-		Devices:   make(map[string]*Device, 0),
+		RootTopic: DefaultRootTopic,
+		Devices:   make(map[string]*Device),
 	}
 }
 
 func (h *Homie) NewDevice(id string) (*Device, error) {
-	d := NewDevice(id)
-	return d, h.Add(d)
+	d := NewDevice()
+	return d, h.Add(id, d)
 }
 
-func (h *Homie) Add(d *Device) error {
-	if _, ok := h.Devices[d.ID]; ok {
-		return fmt.Errorf("device %s already exists", d.ID)
+func (h *Homie) Add(id string, d *Device) error {
+	if _, ok := h.Devices[id]; ok {
+		return fmt.Errorf("device %s already exists", id)
 	}
 
-	h.Devices[d.ID] = d
+	h.Devices[id] = d
 	return nil
 }
 

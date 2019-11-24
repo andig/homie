@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-
-	"github.com/mitchellh/mapstructure"
 )
 
+// State is the Device state
 type State string
 
 const (
+	// Version is the spec version
 	Version = "4.0.0"
 
 	StateInit         State = "init"
@@ -21,48 +21,46 @@ const (
 	StateAlert        State = "alert"
 )
 
+// Device represents a device in terms of the spec
 type Device struct {
-	ID             string
-	Name           string `mapstructure:"$name"`
-	State          State  `mapstructure:"$state"`
-	Version        string `mapstructure:"$homie"`
-	Implementation string `mapstructure:"$implementation"`
-	Extensions     []string
-	Nodes          map[string]*Node
+	Name           string           `mapstructure:"$name"`
+	State          State            `mapstructure:"$state"`
+	Version        string           `mapstructure:"$homie"`
+	Implementation string           `mapstructure:"$implementation"`
+	Extensions     []string         `mapstructure:"_extensions"`
+	Nodes          map[string]*Node `mapstructure:"_nodes"`
 }
 
-func NewDevice(id string) *Device {
+// NewDevice creates a new device
+func NewDevice() *Device {
 	return &Device{
-		ID:         id,
-		Name:       id,
+		// Name:       id,
 		State:      StateInit,
 		Version:    Version,
 		Extensions: make([]string, 0),
-		Nodes:      make(map[string]*Node, 0),
+		Nodes:      make(map[string]*Node),
 	}
 }
 
+// NewNode is a conveniece method for creating a new node and attaching it to the device
 func (d *Device) NewNode(id string) (*Node, error) {
-	n := NewNode(id)
-	return n, d.Add(n)
+	n := NewNode()
+	return n, d.Add(id, n)
 }
 
-func (d *Device) Add(n *Node) error {
-	if _, ok := d.Nodes[n.ID]; ok {
-		return fmt.Errorf("node %s already exists", n.ID)
+// Add attaches a node to the node. An error is raised on duplicate node id.
+func (d *Device) Add(id string, n *Node) error {
+	if _, ok := d.Nodes[id]; ok {
+		return fmt.Errorf("node %s already exists", id)
 	}
 
-	d.Nodes[n.ID] = n
+	d.Nodes[id] = n
 	return nil
 }
 
-func (d *Device) Topic(base string) string {
-	return base + "/" + d.ID
-}
-
-func (d *Device) Publish(pub Publisher, base string) {
-	topic := d.Topic(base)
-
+// Publish publishes the device including nodes/properties to MQTT at the given topic.
+// It's the callers responsibility to ensure correct topic.
+func (d *Device) Publish(pub Publisher, topic string) {
 	pub(topic+"/$homie", true, d.Version)
 	pub(topic+"/$name", true, d.Name)
 	pub(topic+"/$state", true, string(d.State))
@@ -74,22 +72,30 @@ func (d *Device) Publish(pub Publisher, base string) {
 	}
 
 	nodes := make([]string, 0, len(d.Nodes))
-	for _, n := range d.Nodes {
-		nodes = append(nodes, n.ID)
-		n.Publish(pub, topic)
+	for id, n := range d.Nodes {
+		nodes = append(nodes, id)
+		n.Publish(pub, topic+"/"+id)
 	}
 	sort.Strings(nodes)
 	pub(topic+"/$nodes", true, strings.Join(nodes, ","))
 }
 
-func (d *Device) Unmarshal(subscribe Subscriber, base string) {
-	prefix := d.Topic(base) + "/"
+func (d *Device) Unmarshal(subscribe Subscriber, topic string) {
+	prefix := topic + "/"
 
 	subscribe(prefix+"+", func(topic string, retained bool, message string) {
 		topic = strings.TrimPrefix(topic, prefix)
-		fmt.Printf("dev: %s %v (%v)\n", topic, message, retained)
+		// fmt.Printf("dev: %s %v (%v)\n", topic, message, retained)
 
 		switch topic {
+		case "$homie":
+			d.Version = message
+		case "$name":
+			d.Name = message
+		case "$state":
+			d.State = State(message)
+		case "$implementation":
+			d.Implementation = message
 		case "$extensions":
 			d.Extensions = strings.Split(message, ",")
 		case "$nodes":
@@ -97,14 +103,9 @@ func (d *Device) Unmarshal(subscribe Subscriber, base string) {
 			for _, id := range nodes {
 				if _, ok := d.Nodes[id]; !ok {
 					n, _ := d.NewNode(id)
-					n.Unmarshal(subscribe, d.Topic(base))
+					n.Unmarshal(subscribe, prefix+id)
 				}
 			}
-		default:
-			// use mapstructure instead of decoding by property
-			mapstructure.WeakDecode(map[string]string{
-				topic: message,
-			}, d)
 		}
 	})
 }

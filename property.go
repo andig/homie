@@ -1,8 +1,6 @@
 package homie
 
 import (
-	"fmt"
-	"github.com/mitchellh/mapstructure"
 	"strings"
 )
 
@@ -17,32 +15,29 @@ const (
 	DataTypeColor   DataType = "color"
 )
 
+// Property represents a node's property according to the spec
 type Property struct {
-	ID       string
 	Name     string   `mapstructure:"$name"`
 	DataType DataType `mapstructure:"$datatype"`
-	Value    string
-	Format   string `mapstructure:"$format"`
-	Unit     string `mapstructure:"$unit"`
-	Retained bool   `mapstructure:"$retained"`
-	Settable bool   `mapstructure:"$settable"`
+	Value    string   `mapstructure:"_value"`
+	Format   string   `mapstructure:"$format"`
+	Unit     string   `mapstructure:"$unit"`
+	Retained bool     `mapstructure:"$retained"`
+	Settable bool     `mapstructure:"$settable"`
 }
 
-func NewProperty(id string) *Property {
+// NewProperty creates a new property
+func NewProperty() *Property {
 	return &Property{
-		ID:       id,
-		Name:     id,
+		// Name:     id,
 		Retained: true,
 	}
 }
 
-func (p *Property) Topic(base string) string {
-	return base + "/" + p.ID
-}
-
-func (p *Property) Publish(pub Publisher, base string) {
-	topic := p.Topic(base)
-
+// Publish publishes the property to MQTT at the given topic.
+// It's the callers responsibility to ensure correct topic and include the
+// property in the parent nodes $properties attribute.
+func (p *Property) Publish(pub Publisher, topic string) {
 	// required attributes
 	pub(topic+"/$name", true, p.Name)
 	pub(topic+"/$datatype", true, string(p.DataType))
@@ -69,16 +64,26 @@ func (p *Property) Publish(pub Publisher, base string) {
 // 	pub(topic, p.Retained, p.Value)
 // }
 
-func (p *Property) Unmarshal(subscribe Subscriber, base string) {
-	prefix := p.Topic(base) + "/"
+func (p *Property) Unmarshal(subscribe Subscriber, topic string) {
+	prefix := topic + "/"
 
 	subscribe(prefix+"+", func(topic string, retained bool, message string) {
 		topic = strings.TrimPrefix(topic, prefix)
-		fmt.Printf("prop: %s %v (%v)\n", topic, message, retained)
+		// fmt.Printf("prop: %s %v (%v)\n", topic, message, retained)
 
-		// use mapstructure instead of decoding by property
-		mapstructure.WeakDecode(map[string]string{
-			topic: message,
-		}, p)
+		switch topic {
+		case "$name":
+			p.Name = message
+		case "$datatype":
+			p.DataType = DataType(message)
+		case "$format":
+			p.Format = message
+		case "$unit":
+			p.Unit = message
+		case "$retained":
+			p.Retained = message == "true"
+		case "$settable":
+			p.Settable = message == "true"
+		}
 	})
 }

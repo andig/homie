@@ -6,23 +6,19 @@ import (
 )
 
 func TestDevice(t *testing.T) {
-	if d := NewDevice("id"); d.ID != "id" || d.Name != "id" ||
-		d.State != StateInit || d.Version != Version || d.Implementation != "" {
+	if d := NewDevice(); d.State != StateInit || d.Version != Version || d.Implementation != "" {
 		t.Fail()
 	}
-	// if d := NewDevice("id", "alternate"); d.RootTopic != "alternate" {
-	// 	t.Fail()
-	// }
 }
 func TestDeviceAdd(t *testing.T) {
-	d := NewDevice("id")
-	n := NewNode("node")
+	d := NewDevice()
+	n := NewNode()
 
-	if err := d.Add(n); err != nil || d.Nodes["node"] != n {
+	if err := d.Add("node", n); err != nil || d.Nodes["node"] != n {
 		t.Fail()
 	}
 
-	if err := d.Add(n); err == nil {
+	if err := d.Add("node", n); err == nil {
 		t.Fail()
 	}
 
@@ -32,7 +28,7 @@ func TestDeviceAdd(t *testing.T) {
 }
 
 func TestDevicePublish(t *testing.T) {
-	d := NewDevice("id")
+	d := NewDevice()
 	d.Name = "name"
 	d.Implementation = "impl"
 	d.State = StateReady
@@ -44,16 +40,17 @@ func TestDevicePublish(t *testing.T) {
 		t, m string
 		r    bool
 	}{
-		{">/id/$homie", Version, true},
-		{">/id/$name", "name", true},
-		{">/id/$state", string(StateReady), true},
-		{">/id/$extensions", "foo,bar", true},
-		{">/id/$implementation", "impl", true},
-		{">/id/$nodes", "n1,n2", true},
+		{"homie/dev/$homie", Version, true},
+		{"homie/dev/$name", "name", true},
+		{"homie/dev/$state", string(StateReady), true},
+		{"homie/dev/$extensions", "foo,bar", true},
+		{"homie/dev/$implementation", "impl", true},
+		{"homie/dev/$nodes", "n1,n2", true},
 	}
 
 	idx := 0
 	d.Publish(func(topic string, retained bool, message string) {
+		// fmt.Printf("%s %v (%v)\n", topic, message, retained)
 		// filter node properties
 		if strings.Contains(topic, "/n1/") || strings.Contains(topic, "/n2/") {
 			return
@@ -70,7 +67,7 @@ func TestDevicePublish(t *testing.T) {
 			t.Errorf("got %s %s %v", topic, message, retained)
 		}
 		idx++
-	}, ">")
+	}, "homie/dev")
 
 	if idx != len(exp) {
 		t.Errorf("unexpected number of matches %d", idx)

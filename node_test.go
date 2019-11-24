@@ -6,19 +6,19 @@ import (
 )
 
 func TestNode(t *testing.T) {
-	if n := NewNode("id"); n.ID != "id" || n.Name != "id" || n.Type != "" {
+	if n := NewNode(); n.Type != "" {
 		t.Fail()
 	}
 }
 func TestNodeAdd(t *testing.T) {
-	n := NewNode("id")
-	p := NewProperty("prop")
+	n := NewNode()
+	p := NewProperty()
 
-	if err := n.Add(p); err != nil || n.Properties["prop"] != p {
+	if err := n.Add("prop", p); err != nil || n.Properties["prop"] != p {
 		t.Fail()
 	}
 
-	if err := n.Add(p); err == nil {
+	if err := n.Add("prop", p); err == nil {
 		t.Fail()
 	}
 
@@ -28,18 +28,19 @@ func TestNodeAdd(t *testing.T) {
 }
 
 func TestNodePublish(t *testing.T) {
-	n := NewNode("id")
+	n := NewNode()
+	n.Name = "name"
 	n.Type = "type"
-	n.Add(NewProperty("p1"))
-	n.Add(NewProperty("p2"))
+	n.NewProperty("p1")
+	n.NewProperty("p2")
 
 	exp := []struct {
 		t, m string
 		r    bool
 	}{
-		{">/id/$name", "id", true},
-		{">/id/$type", "type", true},
-		{">/id/$properties", "p1,p2", true},
+		{"homie/dev/node/$name", "name", true},
+		{"homie/dev/node/$type", "type", true},
+		{"homie/dev/node/$properties", "p1,p2", true},
 	}
 
 	idx := 0
@@ -61,7 +62,7 @@ func TestNodePublish(t *testing.T) {
 			t.Errorf("got %s %s %v", topic, message, retained)
 		}
 		idx++
-	}, ">")
+	}, "homie/dev/node")
 
 	if idx != len(exp) {
 		t.Errorf("unexpected number of matches %d", idx)

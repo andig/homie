@@ -5,8 +5,7 @@ import (
 )
 
 func TestProperty(t *testing.T) {
-	if p := NewProperty("id"); p.ID != "id" || p.Name != "id" ||
-		p.DataType != "" || p.Value != "" ||
+	if p := NewProperty(); p.DataType != "" || p.Value != "" ||
 		p.Format != "" || p.Unit != "" ||
 		p.Settable != false || p.Retained != true {
 		t.Fail()
@@ -14,7 +13,7 @@ func TestProperty(t *testing.T) {
 }
 
 func TestPropertyPublish(t *testing.T) {
-	p := NewProperty("id")
+	p := NewProperty()
 	p.Name = "name"
 	p.DataType = DataTypeFloat
 	p.Value = "1.23"
@@ -25,11 +24,11 @@ func TestPropertyPublish(t *testing.T) {
 		t, m string
 		r    bool
 	}{
-		{">/id/$name", "name", true},
-		{">/id/$datatype", "float", true},
-		{">/id/$format", "1..2", true},
-		{">/id/$unit", "%", true},
-		{">/id", "1.23", true},
+		{"homie/dev/node/prop/$name", "name", true},
+		{"homie/dev/node/prop/$datatype", "float", true},
+		{"homie/dev/node/prop/$format", "1..2", true},
+		{"homie/dev/node/prop/$unit", "%", true},
+		{"homie/dev/node/prop", "1.23", true},
 	}
 
 	idx := 0
@@ -46,7 +45,7 @@ func TestPropertyPublish(t *testing.T) {
 			t.Errorf("got %s %s %v", topic, message, retained)
 		}
 		idx++
-	}, ">")
+	}, "homie/dev/node/prop")
 
 	if idx != len(exp) {
 		t.Errorf("unexpected number of matches %d", idx)
@@ -54,7 +53,8 @@ func TestPropertyPublish(t *testing.T) {
 }
 
 func TestPropertyPublishForUnretainedSettable(t *testing.T) {
-	p := NewProperty("id")
+	p := NewProperty()
+	p.Name = "name"
 	p.DataType = "float"
 	p.Value = "1.23"
 	p.Retained = false
@@ -64,11 +64,11 @@ func TestPropertyPublishForUnretainedSettable(t *testing.T) {
 		t, m string
 		r    bool
 	}{
-		{">/id/$name", "id", true},
-		{">/id/$datatype", "float", true},
-		{">/id/$retained", "false", true},
-		{">/id/$settable", "true", true},
-		{">/id", "1.23", false},
+		{"homie/dev/node/prop/$name", "name", true},
+		{"homie/dev/node/prop/$datatype", "float", true},
+		{"homie/dev/node/prop/$retained", "false", true},
+		{"homie/dev/node/prop/$settable", "true", true},
+		{"homie/dev/node/prop", "1.23", false},
 	}
 
 	idx := 0
@@ -85,7 +85,7 @@ func TestPropertyPublishForUnretainedSettable(t *testing.T) {
 			t.Errorf("got %s %s %v", topic, message, retained)
 		}
 		idx++
-	}, ">")
+	}, "homie/dev/node/prop")
 
 	if idx != len(exp) {
 		t.Errorf("unexpected number of matches %d", idx)

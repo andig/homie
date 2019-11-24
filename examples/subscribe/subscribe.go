@@ -11,14 +11,13 @@ import (
 )
 
 const (
-	root   = homie.DefaultRootTopic // "homie"
 	broker = "localhost:1883"
 	qos    = byte(1)
 )
 
 func main() {
 	// example device tree
-	h := homie.NewHomie(root)
+	h := homie.NewHomie()
 
 	// template mqtt client options
 	opt := mqtt.NewClientOptions()
@@ -41,6 +40,6 @@ func main() {
 	for _, d := range h.Devices {
 		d.Publish(func(topic string, retained bool, message string) {
 			fmt.Printf("%s \"%v\" (%v)\n", topic, message, retained)
-		}, root)
+		}, homie.DefaultRootTopic)
 	}
 }

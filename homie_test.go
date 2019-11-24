@@ -8,19 +8,20 @@ func TestHomie(t *testing.T) {
 	if h := NewHomie(); h.RootTopic != "homie" {
 		t.Fail()
 	}
-	if h := NewHomie("alternate"); h.RootTopic != "alternate" {
-		t.Fail()
-	}
 }
 func TestHomieAdd(t *testing.T) {
 	h := NewHomie()
-	d := NewDevice("dev")
+	d := NewDevice()
 
-	if err := h.Add(d); err != nil || h.Devices["dev"] != d {
+	if err := h.Add("dev", d); err != nil || h.Devices["dev"] != d {
 		t.Fail()
 	}
 
-	if err := h.Add(d); err == nil {
+	if err := h.Add("dev", d); err == nil {
+		t.Fail()
+	}
+
+	if d, err := h.NewDevice("dev2"); err != nil || h.Devices["dev2"] != d {
 		t.Fail()
 	}
 }
